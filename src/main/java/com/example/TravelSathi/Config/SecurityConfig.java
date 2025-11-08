@@ -22,17 +22,23 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtRequestFilter jwtRequestFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   JwtRequestFilter jwtRequestFilter) throws Exception {
         http
             .cors().and()
             .csrf().disable()
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/user/register", "/api/user/login").permitAll()
+                // ✅ Public endpoints
+                .requestMatchers("/", "/api/user/**").permitAll()
+                // ✅ Admin protected routes
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // ✅ Anything else requires authentication
                 .anyRequest().authenticated()
             )
+            // ✅ Use stateless JWT sessions
             .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
 
+        // ✅ Register JWT filter
         http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -41,8 +47,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Allow your frontend URL
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:8082"));
+
+        // ✅ Allow local and Helm frontend ports
+        configuration.setAllowedOriginPatterns(Arrays.asList("http://localhost:*"));
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
@@ -58,7 +66,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
     }
 }
+
